@@ -2,8 +2,9 @@ var request = require('request');
 var util = require('util');
 var cheerio = require('cheerio');
 var sstats = require('simple-statistics')
+var program = require('commander');
 
-const OLC_URI="https://www.onlinecontest.org/olc-3.0/gliding/flightbook.html?sp=%d&st=olcp&rt=olc&pi=22291";
+const OLC_URI="https://www.onlinecontest.org/olc-3.0/gliding/flightbook.html?sp=%d&st=olcp&rt=olc&pi=%d";
 
 flights = [];
 
@@ -21,7 +22,6 @@ function process_flights() {
 
 function parse_infos(html) {
   var data = cheerio.load(html);
-  //var t = data("#table_OLC-Plus");
   var t = data('#table_OLC-Classic > tbody > tr');
 
   if (t.length == 0)
@@ -34,7 +34,6 @@ function parse_infos(html) {
     let points = tr.children[3].firstChild.data
     let distance = tr.children[5].firstChild.data
     let kmh = tr.children[7].children[0].data;
-    // let takeoff = tr.children[9].children[0].data;
 
     flights.push({
       date: new Date(date),
@@ -45,11 +44,11 @@ function parse_infos(html) {
   })
 }
 
-function download(year, cb) {
+function download(year, pilotid, cb) {
   console.log("start to download for", year);
 
-  const a = util.format(OLC_URI, year)
-  request(a, function (asdf, b, html) {
+  const a = util.format(OLC_URI, year, pilotid)
+  request(a, function (_, _, html) {
     parse_infos(html);
 
     if(cb){
@@ -57,5 +56,16 @@ function download(year, cb) {
     }
   })
 }
+ 
+program
+  .version('0.0.1')
+  .option('-p, --pilotid [id]', 'the pilots id')
+  .option('-y, --year [year]', 'year to download')
+  .parse(process.argv);
 
-download(2016, process_flights);
+if(!program.pilotid || !program.year) {
+  console.error('olcstats: need pilotid and year, use --help')
+  process.exit(1);
+}
+
+download(program.year, program.pilotid, process_flights);
